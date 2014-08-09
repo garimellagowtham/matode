@@ -8,6 +8,12 @@ Microsoft Visual C++ 2010 Redistributable Package
 
 (download the version for your architecture, x86 or x64)
 
+Installation (Linux)
+-------------------
+Run the setup.bash. Then add toolbox and examples recursively matlab toolbox.
+Then to test the setup, run one of the examples
+
+
 Documentation
 -------------
 
@@ -20,6 +26,8 @@ Authors
 
 Wouter Caarls <w.caarls@tudelft.nl>
 Erik Schuitema <e.schuitema@tudelft.nl>
+(Uploaded onto github and added setup.bash by :
+Gowtham Garimella <ggarime1@jhu.edu>
 
 Licensing
 ---------
