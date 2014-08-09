@@ -1,0 +1,224 @@
+<!-- ODE Simulation of a pogo stick to demonstrate a slider joint
+     Author: Erik Schuitema [e.schuitema@tudelft.nl] -->
+
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+	<version>1.0</version>
+	<loglevel>info</loglevel>
+	<constants>
+		<irrelevantmass>0.001</irrelevantmass>
+		<irrelevantinertia>0.001</irrelevantinertia>
+        
+        <!-- Materials -->
+		<lynoleum>0</lynoleum>
+		<rubber>1</rubber>
+		<glass>2</glass>
+
+        <!-- Pole parameters -->
+        <lowerpolelength>0.4</lowerpolelength>
+		<lowerpoleradius>0.02</lowerpoleradius>
+		<lowerpolemass>0.1</lowerpolemass>
+        
+        <upperpolelength>0.4</upperpolelength>
+		<upperpoleradius>0.04</upperpoleradius>
+		<upperpolemass>0.1</upperpolemass>
+        
+        <footradius>0.08</footradius>
+        
+        <!-- Slider joint properties -->
+        <upperjointlimit>01.1</upperjointlimit>
+        <lowerjointlimit>-01.1</lowerjointlimit>
+        <jointstopK>30.0</jointstopK>
+        <jointstopD>1.0</jointstopD>
+        
+        <!-- Initial condition -->
+        <initialangle>0.05</initialangle>
+        
+	</constants>
+	<strings>
+		<s>true</s>
+		<s>false</s>
+		<s>info</s>
+		<s>robot</s>
+		<s>lowerpole</s>
+		<s>upperpole</s>
+		<s>top</s>
+		<s>bottom</s>
+		<s>motorjoint</s>
+		<s>slider</s>
+		<s>force</s>
+		<s>foot</s>
+		<s>sphere</s>
+		<s>surface</s>
+		<s>plane</s>
+		<s>floor</s>
+	</strings>
+	<ode>
+		<globalK>3.3E6</globalK>
+		<globalD>0.0</globalD>
+		<gravityZ>-9.81</gravityZ>
+		<steptime>0.005</steptime>
+		<subsamplingfactor>1</subsamplingfactor>
+        
+        <!-- Robot -->
+		<object>
+			<name>robot</name>
+			<drawbodies>true</drawbodies>
+			<drawcoms>true</drawcoms>
+			<drawgeoms>true</drawgeoms>
+			
+            <!-- Bodies -->
+			<body>
+				<name>lowerpole</name>
+				<mass>lowerpolemass</mass>
+				<IXX>(1/12)*lowerpolemass*(3*lowerpoleradius^2+lowerpolelength^2)</IXX>
+				<IYY>(1/12)*lowerpolemass*(3*lowerpoleradius^2+lowerpolelength^2)</IYY>
+				<IZZ>(1/2)*lowerpolemass*lowerpoleradius^2</IZZ>
+				<anchor>
+					<name>top</name>
+					<x>0</x>
+					<y>0</y>
+					<z>lowerpolelength/2</z>
+				</anchor>
+				<drawinfo>
+					<cylinder comment="lowerpole">
+						<color>
+							<r>0.5</r>
+							<g>0.5</g>
+							<b>0.8</b>
+						</color>
+						<radius>lowerpoleradius</radius>
+						<length>lowerpolelength</length>
+					</cylinder>
+				</drawinfo>
+			</body>
+			<body>
+				<name>upperpole</name>
+				<mass>upperpolemass</mass>
+				<IXX>(1/12)*upperpolemass*(3*upperpoleradius^2+upperpolelength^2)</IXX>
+				<IYY>(1/12)*upperpolemass*(3*upperpoleradius^2+upperpolelength^2)</IYY>
+				<IZZ>(1/2)*upperpolemass*upperpoleradius^2</IZZ>
+				<anchor>
+					<name>bottom</name>
+					<x>0</x>
+					<y>0</y>
+					<z>-upperpolelength/2</z>
+				</anchor>
+				<drawinfo>
+					<cylinder comment="upperpole">
+						<color>
+							<r>0.8</r>
+							<g>0.5</g>
+							<b>0.5</b>
+						</color>
+						<radius>upperpoleradius</radius>
+						<length>upperpolelength</length>
+					</cylinder>
+				</drawinfo>
+			</body>
+            
+            <!-- Initial condition of pole angles -->
+			<initialcondition>
+				<bodyname>lowerpole</bodyname>
+				<rotation>
+					<axis>
+						<x>1</x>
+						<y>0</y>
+						<z>0</z>
+					</axis>
+					<angle>initialangle</angle>
+				</rotation>
+			</initialcondition>
+			<initialcondition>
+				<bodyname>upperpole</bodyname>
+				<rotation>
+					<axis>
+						<x>1</x>
+						<y>0</y>
+						<z>0</z>
+					</axis>
+					<angle>initialangle</angle>
+				</rotation>
+			</initialcondition>
+
+            <!-- Joints -->
+			<joint>
+				<name>motorjoint</name>
+				<type>slider</type>
+				<anchor1>
+					<bodyname>lowerpole</bodyname>
+					<anchorname>top</anchorname>
+				</anchor1>
+				<anchor2>
+					<bodyname>upperpole</bodyname>
+					<anchorname>bottom</anchorname>
+				</anchor2>
+				<axisX>0</axisX>
+				<axisY>0</axisY>
+				<axisZ>1</axisZ>
+                <lowerlimit>lowerjointlimit</lowerlimit>
+                <upperlimit>upperjointlimit</upperlimit>
+                <stopK>jointstopK</stopK>
+                <stopD>jointstopD</stopD>
+				<motor>
+					<type>force</type>
+					<lineardamping>0</lineardamping>
+				</motor>
+			</joint>
+
+            <!-- Collision geometries -->
+			<geom>
+				<name>foot</name>
+				<bodyname>lowerpole</bodyname>
+				<type>sphere</type>
+				<material>rubber</material>
+				<radius>footradius</radius>
+				<x>0</x>				
+				<y>0</y>
+				<z>-lowerpolelength/2</z>				
+			</geom>
+
+            <!-- Initial position -->
+			<fixedpoint>
+				<bodyname>lowerpole</bodyname>
+				<bodyX>0</bodyX>
+				<bodyY>0</bodyY>
+				<bodyZ>0</bodyZ>
+				<worldX>0</worldX>
+				<worldY>0</worldY>
+				<worldZ>0.5</worldZ>
+			</fixedpoint>
+		</object>
+        
+        <!-- Floor -->
+		<object>
+			<name>floor</name>
+			<geom>
+				<name>surface</name>
+				<type>plane</type>
+				<material>lynoleum</material>
+				<A>0</A>
+				<B>0</B>
+				<C>1</C>
+				<D>0</D>		
+			</geom>	
+		</object>
+        
+		<collisions>
+			<drawcontacts>false</drawcontacts>
+			<contact>
+				<material1>lynoleum</material1>
+				<material2>rubber</material2>
+				<K>80</K>
+				<D>0</D>
+				<mu comment="-1 means infinite">-1</mu>
+				<approximation comment="1 means friction pyramid approximation">1</approximation>
+			</contact>
+			<collision>
+				<object1>floor</object1>
+				<object2>robot</object2>
+			</collision>
+		</collisions>
+	</ode>
+</configuration>
+

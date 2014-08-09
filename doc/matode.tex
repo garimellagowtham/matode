@@ -1,0 +1,299 @@
+\documentclass{article}
+\usepackage{boxedminipage}
+\usepackage{color}
+\usepackage{url}
+\usepackage{alltt}
+\usepackage{upquote}
+\usepackage{xspace}
+
+\newcommand{\txt}[1]{\texttt{#1}}
+\newcommand{\matode}{\txt{matode}\xspace}
+\newcommand{\tab}{\hspace{3em}}
+
+\definecolor{matlab-string}{RGB}{160, 32, 240}
+\definecolor{matlab-keyword}{RGB}{0, 0, 255}
+\definecolor{matlab-comment}{RGB}{34, 139, 34}
+\definecolor{xml-constant}{RGB}{0, 0, 0}
+
+\newcommand{\ms}[1]{\textcolor{matlab-string}{#1}}
+\newcommand{\mk}[1]{\textcolor{matlab-keyword}{#1}}
+\newcommand{\mc}[1]{\textcolor{matlab-comment}{#1}}
+
+\newcommand{\xt}[1]{\textcolor{matlab-keyword}{<#1>}}
+\newcommand{\xa}[1]{\textcolor{matlab-string}{#1}}
+\newcommand{\xs}[1]{\textcolor{matlab-string}{"#1"}}
+\newcommand{\xc}[1]{\textcolor{matlab-comment}{<!-- #1 -->}}
+\renewcommand{\xi}[1]{\textcolor{xml-constant}{#1}}
+
+\newenvironment{code}{\alltt\small}{\endalltt}
+\newenvironment{boxedcode}{\begin{boxedminipage}{\linewidth}\begin{code}}{\end{code}\end{boxedminipage}}
+
+\title{MatODE}
+\author{Wouter Caarls and Erik Schuitema\\
+\{w.caarls, e.schuitema\}@tudelft.nl}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\section{Introduction}
+\subsection{What is ODE?}
+
+ODE is the Open Dynamics Engine by Russell Smith. While ODE is slower than direct model simulation for most of the toy problems you will be working on, the advantage is that it can be directly applied to the more complex systems you will encounter in your future projects. From the ODE website at \url{http://www.ode.org/}:
+\begin{quote}
+ODE is an open source, high performance library for simulating rigid body dynamics. It is fully featured, stable, mature and platform independent with an easy to use C/C++ API. It has advanced joint types and integrated collision detection with friction. ODE is useful for simulating vehicles, objects in virtual reality environments and virtual creatures. It is currently used in many computer games, 3D authoring tools and simulation tools.
+\end{quote}
+
+An ODE model consists of \emph{bodies} (which have a certain mass and inertia), \emph{geometries} (defining the shape of a body for collisions) and \emph{joints} (connecting the bodies). A \emph{motor} can be defined on a joint to apply a certain force to it. Different joint types -- such as hinges or sliders -- are available, providing all the tools to model many different robots.
+
+ODE works by fixed-timestep numerical integration of the equations of motion that define the system of connected bodies. When bodies collide, it creates temporary ``joints'' at the collision point that make sure the bodies do not intersect. These joints constitute a spring-damper system with finite K and D. Both the fixed step size (causing collision to be detected some time \emph{after} they've taken place) and finite K/D values (meaning bodies can ``sink into'' one another a tiny amount) lead to inaccuracies. With well-chosen values for these parameters, ODE can be remarkably accurate.
+
+\subsection{What is matode ?}
+
+\matode is a Matlab interface to ODE. It uses Matlab's object oriented programming capabilities to make the interface as easy as possible. The main class is \txt{odesim}, which provides global interaction with the simulator such as initialization, running a simulation step, and resetting to an initial condition. It also allows you to retrieve sensor and actuator indices, with which you can sense joint positions and drive motors. The bodies that constitute the robot and the joints that connect them are defined in an \txt{.xml} file loaded during initialization.
+
+\subsection{Installation}
+\begin{enumerate}
+  \item Unzip the installation file.
+  \item \emph{(Linux only)} Add the \txt{matode/toolbox} directory to your \txt{LD\_LIBRARY\_PATH}.
+  \item Add the \txt{matode/toolbox} directory to your Matlab path.
+\end{enumerate}
+
+\section{Configuration file syntax}
+The configuration XML file describes all the bodies, joints and motors in the system, as well as collision information and settings for the integrator. We will now briefly explain the format of this file.
+
+\subsection{\txt{constants}}
+The first important section is called \txt{constants}. As the name implies, constants are defined here that can be used in the rest of the file. As with other numerical values, the constants may contain simple mathematical expressions. Constant expressions may also reference other constants, as long as those are defined earlier in the file (see Figure~\ref{fig:lambda:constants}).
+
+\begin{figure}[h!]
+\begin{boxedcode}
+\xt{configuration}
+\tab\xt{constants}
+\tab\tab\xt{length}0.2\xt{/length}
+\tab\tab\xt{radius}0.015\xt{/radius}
+\tab\tab\xt{density}7874\xt{/density}
+\tab\tab\xt{mass}length*_pi*radius^2*density\xt{/mass}
+\tab\xt{/constants}
+\tab\ldots
+\xt{/configuration}
+\end{boxedcode}
+\caption{Using mathematical expressions in the \txt{constants} section, referencing previously defined constants.}
+\label{fig:lambda:constants}
+\end{figure}
+
+\subsection{\txt{ode}}
+The \txt{ode} section defines the simulation environment, and takes up the rest of the file. It contains global settings, such as the \txt{globalK} and \txt{globalD} constants for the spring-damper physics simulation used by ODE, as well as the gravity vector \txt{gravityZ} (and possibly \txt{gravityX} and \txt{gravityY}, if you're so inclined). Most important for now are the duration of a simulation step, \txt{steptime}, and how many substeps are done for each step, \txt{subsamplingfactor}. In general, the step time depends on the bandwidth requirements of your controller, while the subsampling factor should be determined by the expected speeds and forces in the simulation.
+
+The \txt{ode} section also defines the objects in the simulation, and collision information (material properties, and which objects may collide). As the system that you will be modeling does not include collisions, we will focus on defining objects.
+
+\subsection{\txt{object}}
+
+An object is a collection of rigid bodies connected by joints. An object has a \txt{name} and zero or more \txt{initialcondition}s, which determine the body orientations when the simulation is reset. As such, the \txt{initialcondition} defines the \txt{bodyname} and a desired \txt{rotation} of that body (see Figure~\ref{fig:lambda:initialcondition}). The object may also define \txt{geom}etries associated with its bodies, which are used in collision detection.
+
+\begin{figure}[h!]
+\begin{boxedcode}
+\xt{object}
+\tab\ldots
+\tab\xt{initialcondition}
+\tab\tab\xt{bodyname}pole\xt{/bodyname}
+\tab\tab\xt{rotation}
+\tab\tab\tab\xt{axis}
+\tab\tab\tab\tab\xt{x}1\xt{/x}
+\tab\tab\tab\tab\xt{y}0\xt{/y}
+\tab\tab\tab\tab\xt{z}0\xt{/z}
+\tab\tab\tab\xt{/axis}
+\tab\tab\tab\xt{angle}_pi\xt{/angle}
+\tab\tab\xt{/rotation}
+\tab\xt{/initialcondition}
+\xt{/object}
+\end{boxedcode}
+\caption{An initial condition for the \txt{pole} body, rotating it 180 degrees around the X axis.}
+\label{fig:lambda:initialcondition}
+\end{figure}
+
+Bodies represent the moving masses in an object. A \txt{body} has a \txt{name}, \txt{mass} and a moment of inertia defined by \txt{IXX}, \txt{IYY} and \txt{IZZ} (and possibly other combinations, depending on the shape of the body you're trying to simulate). It can also define how it should be drawn, using the \txt{drawinfo} tag (see Figure~\ref{fig:lambda:drawinfo}). Note, though, that what is drawn may be completely unrelated to the moment of inertia, or even the collision geometry!
+
+When drawing, the coordinate system is centered on the body. Any objects you draw (such as the cylinder in figure~\ref{fig:lambda:drawinfo}) are also placed in the center, unless you specifically move it with \txt{x}, \txt{y}, \txt{z} position tags. The positive Z axis points upwards.
+
+\begin{figure}[h!]
+\begin{boxedcode}
+\xt{body}
+\tab\ldots
+\tab\xt{drawinfo}
+\tab\tab\xt{cylinder \xa{comment=}\xs{pole}}
+\tab\tab\tab\xt{radius}\xi{radius}\xt{/radius}
+\tab\tab\tab\xt{length}\xi{length}\xt{/length}
+\tab\tab\xt{/cylinder}
+\tab\xt{/drawinfo}
+\xt{/body}
+\end{boxedcode}
+\caption{Using a cylinder as the graphical representation of a body. \txt{\xi{radius}} and \txt{\xi{length}} are constants.}
+\label{fig:lambda:drawinfo}
+\end{figure} 
+
+You can define an \txt{anchor} on a body (and also in the plain \txt{ode} section, in which case it is an anchor fixed in the world) in order to connect the body with others using \txt{joint}s. The anchor defines a point (\txt{x}, \txt{y}, \txt{z}) on the body at which the joint is fixed (see Figure~\ref{fig:lambda:anchor}). The coordinate system is the same as that for drawing, so the anchor in the figure is located at the bottom of the body. Because you can have multiple anchors per body, it also has a \txt{name}.
+
+\begin{figure}[h!]
+\begin{boxedcode}
+\xt{body}
+\tab\ldots
+\tab\xt{anchor}
+\tab\tab\xt{name}world\xt{/name}
+\tab\tab\xt{x}0\xt{/x}
+\tab\tab\xt{y}0\xt{/y}
+\tab\tab\xt{z}-\xi{length}/2+\xi{radius}\xt{/z}
+\tab\xt{/anchor}
+\xt{/body}
+\end{boxedcode}
+\caption{Defining an anchor.}
+\label{fig:lambda:anchor}
+\end{figure} 
+
+A \txt{joint} connects two anchors (\txt{anchor1} and \txt{anchor2}) and can be of different \txt{type}s (such as a hinge, slider, universal, etc.). Depending on the type it can have a number of properties, such as the axis along which the movement can occur (see Figure~\ref{fig:lambda:joint}).
+
+\begin{figure}[h!]
+\begin{boxedcode}
+\xt{joint}
+\tab\xt{name}joint\xt{/name}
+\tab\xt{type}hinge\xt{/type}
+\tab\xt{anchor1}
+\tab\tab\xt{bodyname}world\xt{/bodyname}
+\tab\tab\xt{anchorname}pole\xt{/anchorname} 
+\tab\xt{/anchor1}
+\tab\xt{anchor2}
+\tab\tab\xt{bodyname}pole\xt{/bodyname}
+\tab\tab\xt{anchorname}world\xt{/anchorname}
+\tab\xt{/anchor2}
+\tab\xt{axisX}1\xt{/axisX}  
+\tab\xt{axisY}0\xt{/axisY}
+\tab\xt{axisZ}0\xt{/axisZ}
+\tab\ldots
+\xt{/joint}
+\end{boxedcode}
+\caption{A hinge joint definition.}
+\label{fig:lambda:joint}
+\end{figure} 
+ 
+A joint can also have a \txt{motor} associated with it, which can be actuated to provide a certain force or torque (see Figure~\ref{fig:lambda:motor}).
+
+\begin{figure}[h!]
+\begin{boxedcode}
+\xt{joint}
+\tab\ldots
+\tab\xt{motor}
+\tab\tab\xt{type}torque\xt{/type}
+\tab\xt{/motor}
+\xt{/joint}
+\end{boxedcode}
+\caption{A torque-controlled hinge joint motor.}
+\label{fig:lambda:motor}
+\end{figure}
+
+\section{Matlab interface}
+
+A typical script involving \matode looks as follows:
+\begin{code}
+sim = odesim(\ms{'mountaincar.xml'});                 \mc{\% Load configuration}
+vel = sim.sensor(\ms{'robot.base.velocity.y'});       \mc{\% Define sensor}
+motor = sim.actuator(\ms{'robot.motorjoint1.torque'});\mc{\% Define actuator}
+actuators = sim.actuate();                       \mc{\% Get actuation vector}
+\mk{for} t = 0:sim.step():6                           \mc{\% Simulation loop (6s)}
+  sensors = sim.sense();                         \mc{\% Measure sensor values}
+  \mk{if} sensors(vel) > 0                            \mc{\% Read sensor}
+    actuators(motor) = 0.5;                      \mc{\% Set actuator}
+  \mk{else}
+    actuators(motor) = -0.5;
+  \mk{end}
+  sim.actuate(actuators);                        \mc{\% Run simulation step}
+  pause(sim.step());                             \mc{\% Run in real-time}
+\mk{end}
+sim.close()                                      \mc{\% Destroy simulation}
+\end{code}
+
+Note how the sensor has been defined: it gets the absolute \txt{velocity} in the \txt{y} direction of the \txt{base} body in the \txt{robot} object.
+
+This simulation uses a simple controller to drive a car up a hill. While the car doesn't have enough torque to accomplish this task immediately, it can use another hill to gain speed. This is called the mountain car task.
+
+\subsection{Help page}
+\begin{code}
+ODESIM Open Dynamics Engine interface
+
+   OBJ = ODESIM(FILE) returns an ODE simulator object.
+   OBJ = ODESIM(..., 'nodialog') suppresses the OpenGL dialog window.
+
+   Members:
+      OBJ.SENSOR Get sensor index.
+         S = OBJ.SENSOR(PATH) returns the sensor index for reading the
+         value of PATH. PATH is of the form
+            <object>.<joint>.<angle|anglerate|position|positionrate>
+            which reads the angle or angular velocity in case of a hinge
+            joint, or position and velocity in case of a slider.
+         or
+            <object>.<body>.<position|velocity>.<x|y|z>
+            which reads the absolute position or velocity of a body in
+            a certain direction
+         or
+            <object>.<body>.orientation.<x|y|z|w>
+            which an element of the orientation quaternion of a body
+         or
+            <obj>.<body>.<x|y|z|azimuth|elevation|distance>@<obj2>.<body2>
+            which reads the relative position, angle or distance of a
+            body in the coordinate frame of body2.
+
+      OBJ.ACTUATOR Get actuator index.
+         A = OBJ.ACTUATOR(PATH) returns the actuator index for setting the
+         value of PATH. PATH is of the form
+         <object>.<joint>.<torque|force>
+         Torque is used for hinge joints, force for slider joints.
+
+      OBJ.SENSE Retrieve sensor data.
+         V = OBJ.SENSE() Waits for the simulator to finish the last
+         step and returns the sensor values.
+
+      OBJ.ACTUATE Dispatch actuator values.
+         V = OBJ.ACTUATE() returns a vector for setting actuator values.
+         OBJ.ACTUATE(V) writes the actuator values V to the simulator
+         and initiates a simulation step.
+
+      OBJ.RESET Reset simulation
+         OBJ.RESET() resets the simulation to the initial condition.
+         OBJ.RESET(SEED) sets the random seed on which the initial
+         condition is based to SEED.
+
+      OBJ.STEP Simulator step time.
+         S = OBJ.STEP is the simulated time between successive steps.
+
+      OBJ.CLOSE Close dialog.
+         OBJ.CLOSE() closes the OpenGL dialog and destroys the simulation.
+
+   Example:
+      sim = odesim('mountaincar.xml');
+      vel = sim.sensor('robot.base.velocity.y');
+      motor = sim.actuator('robot.motorjoint1.torque');
+      actuators = sim.actuate();
+      for i = 1:sim.step():6
+        sensors = sim.sense();
+        if sensors(vel) > 0
+          actuators(motor) = 0.5;
+        else
+          actuators(motor) = -0.5;
+        end
+        sim.actuate(actuators);
+        pause(sim.step());
+      end
+      sim.close();
+
+   Authors:
+     Wouter Caarls <w.caarls@tudelft.nl>
+     Erik Schuitema <e.schuitema@tudelft.nl>
+\end{code}
+
+\section{Questions and answers}
+\subsection*{Why is the first set of sensor data incorrect?}
+After defining a sensor, you must first perform a simulation step by calling \txt{actuate} before the proper data for that sensor is available. Because no sensors were defined before the first step, all sensor values are 0 at that point. Note that it is still important to read the first sensor data, because otherwise the actuation would run a step behind.
+
+The same holds for \txt{reset}; a simulation step must first take place before the new state can be read. \txt{sim.actuate(sim.actuate());} is a reasonable way of performing such a step. 
+
+\subsection*{Can I set joint angles and body positions directly from Matlab?}
+That feature is not available at this time. To set positions and angles, use the \txt{fixedpoint} and \txt{initialcondition} clauses in the configuration file.
+
+\end{document}

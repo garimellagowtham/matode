@@ -1,0 +1,35 @@
+MatODE changelog
+----------------
+
+* 0.21, 21-11-2011
+
+Increased the maximum number of sensors to 128
+Added body orientation sensors
+
+* 0.2, 27-06-2011
+
+Added MSVC redistributable prerequisite to readme file
+
+* 0.2-BETA, 05-04-2011
+
+64-bit libraries
+Fixed Windows 7 crash when running two simulations in a row
+
+* 0.15, 3-2-2011
+
+Fixed freeze when closing dialog prematurely
+Drawing area now correctly scales with dialog size
+
+* 0.14, 12-1-2011
+
+Added slider joints
+Fixed realtime mode
+
+* 0.13, 7-1-2011
+
+Fixed memory leak
+Fixed drawing crashes on initialization and cleanup
+
+* 0.12, 7-12-2010
+
+Fixed Win32 crash when drawing objects with rotated drawinfo.
